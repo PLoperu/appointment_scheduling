@@ -9,14 +9,12 @@ module appointment_booking::appointment_booking {
     use sui::balance::{Self, Balance};
     use sui::tx_context::{Self, TxContext};
 
-
     // Constants to handle errors
     const InvalidAppointment: u64 = 1;
-    const AppointmentAlreadyExists : u64 = 2;
+    const AppointmentAlreadyExists: u64 = 2;
     const InvalidClinic: u64 = 3;
     const InvalidPatient: u64 = 4;
-    const InvalidAmount : u64 = 5;
-    
+    const InvalidAmount: u64 = 5;
 
     struct Appointment has key, store {
         id: UID,
@@ -24,10 +22,11 @@ module appointment_booking::appointment_booking {
         clinic: address,
         description: vector<u8>,
         booking_date: vector<u8>,
-        booking_time: vector<u8>, 
-        created_at: u64,  
-        status: String // pending, confirmed, cancelled
+        booking_time: vector<u8>,
+        created_at: u64,
+        status: String, // pending, confirmed, cancelled
     }
+
     struct Clinic has key, store {
         id: UID,
         name: vector<u8>,
@@ -36,7 +35,7 @@ module appointment_booking::appointment_booking {
         email: vector<u8>,
         clinic_address: address,
         wallet: Balance<SUI>,
-        appointments: Table<u64, Appointment>
+        appointments: Table<u64, Appointment>,
     }
 
     struct Patient has key, store {
@@ -47,8 +46,6 @@ module appointment_booking::appointment_booking {
         wallet: Balance<SUI>,
     }
 
-
-
     // Function to create a new Clinic 
     public fun new_clinic(
         name: vector<u8>,
@@ -57,7 +54,7 @@ module appointment_booking::appointment_booking {
         email: vector<u8>,
         clinic_address: address,
         ctx: &mut TxContext
-    ) : Clinic {
+    ): Clinic {
         let clinic = Clinic {
             id: object::new(ctx),
             name: name,
@@ -66,7 +63,7 @@ module appointment_booking::appointment_booking {
             email: email,
             clinic_address: clinic_address,
             wallet: balance::zero(),
-            appointments: table::new<u64, Appointment>(ctx)
+            appointments: table::new<u64, Appointment>(ctx),
         };
 
         clinic
@@ -78,17 +75,16 @@ module appointment_booking::appointment_booking {
         address: address,
         phone: vector<u8>,
         ctx: &mut TxContext
-    ) : Patient {
+    ): Patient {
         let patient = Patient {
             id: object::new(ctx),
             name: name,
             patient_address: address,
             phone: phone,
-            wallet: balance::zero()
+            wallet: balance::zero(),
         };
 
         patient
-      
     }
 
     // Function to create a new Appointment
@@ -102,10 +98,6 @@ module appointment_booking::appointment_booking {
         ctx: &mut TxContext
     ) {
         let created_at = clock::timestamp_ms(clock);
-        // Check if the patient address exists.
-        assert!(patient.patient_address != clinic.clinic_address, InvalidPatient);
-        // Check if the clinic address exists.
-        assert!(clinic.clinic_address != patient.patient_address, InvalidClinic);
         // Check if the appointment already exists.
         assert!(!table::contains(&clinic.appointments, created_at), AppointmentAlreadyExists);
 
@@ -117,7 +109,7 @@ module appointment_booking::appointment_booking {
             booking_date: booking_date,
             booking_time: booking_time,
             created_at: created_at,
-            status:  string::utf8(b"Pending"),
+            status: string::utf8(b"Pending"),
         };
 
         // Add the appointment to the clinic's appointments.
@@ -125,7 +117,7 @@ module appointment_booking::appointment_booking {
     }
 
     // Function to get the appointment details.
-    public fun get_appointment_details(appointment: &Appointment) : (vector<u8>, vector<u8>, vector<u8>, u64, String) {
+    public fun get_appointment_details(appointment: &Appointment): (vector<u8>, vector<u8>, vector<u8>, u64, String) {
         (
             appointment.description,
             appointment.booking_date,
@@ -136,7 +128,7 @@ module appointment_booking::appointment_booking {
     }
 
     // Function to get the clinic details.
-    public fun get_clinic_details(clinic: &Clinic) : (vector<u8>, vector<u8>, vector<u8>, vector<u8>, address) {
+    public fun get_clinic_details(clinic: &Clinic): (vector<u8>, vector<u8>, vector<u8>, vector<u8>, address) {
         (
             clinic.name,
             clinic.address,
@@ -147,7 +139,7 @@ module appointment_booking::appointment_booking {
     }
 
     // Function to get the patient details.
-    public fun get_patient_details(patient: &Patient) : (vector<u8>, address, vector<u8>) {
+    public fun get_patient_details(patient: &Patient): (vector<u8>, address, vector<u8>) {
         (
             patient.name,
             patient.patient_address,
@@ -156,12 +148,12 @@ module appointment_booking::appointment_booking {
     }
 
     // Function to get the clinic wallet balance.
-    public fun get_clinic_wallet_balance(clinic: &Clinic) : &Balance<SUI> {
+    public fun get_clinic_wallet_balance(clinic: &Clinic): &Balance<SUI> {
         &clinic.wallet
     }
 
     // Function to get the patient wallet balance.
-    public fun get_patient_wallet_balance(patient: &Patient) : &Balance<SUI> {
+    public fun get_patient_wallet_balance(patient: &Patient): &Balance<SUI> {
         &patient.wallet
     }
 
@@ -177,9 +169,7 @@ module appointment_booking::appointment_booking {
         balance::join(&mut patient.wallet, balance_);
     }
 
-
-
-    // Functionality to enable  the patient to make payment
+    // Functionality to enable the patient to make payment
     public fun make_payment(
         patient: &mut Patient,
         clinic: &mut Clinic,
@@ -193,26 +183,23 @@ module appointment_booking::appointment_booking {
         // Transfer the payment from the patient wallet to the clinic wallet
         let coin = coin::take(&mut patient.wallet, payment, ctx);
         transfer::public_transfer(coin, clinic.clinic_address);
-
-    }   
-
- 
+    }
 
     // Get appointment for a clinic using the created_at
-    public fun get_appointment_for_clinic(clinic: &Clinic, created_at: u64) : &Appointment {
+    public fun get_appointment_for_clinic(clinic: &Clinic, created_at: u64): &Appointment {
         // Check for Invalid Appointment
         assert!(table::contains(&clinic.appointments, created_at), InvalidAppointment);
-       let appointment = table::borrow<u64, Appointment>(&clinic.appointments, created_at);
-         appointment
+        let appointment = table::borrow<u64, Appointment>(&clinic.appointments, created_at);
+        appointment
     }
 
     // Check if an appointment exists in the clinic and is paid for
-    public fun check_appointment_status(clinic: &Clinic, created_at: u64) : bool {
+    public fun check_appointment_status(clinic: &Clinic, created_at: u64): bool {
         let appointment = table::borrow<u64, Appointment>(&clinic.appointments, created_at);
         appointment.status == string::utf8(b"Confirmed")
     }
 
-    //  Functionality to allow Clinic to withdraw from the wallet
+    // Functionality to allow Clinic to withdraw from the wallet
     public fun withdraw_funds(
         clinic: &mut Clinic,
         amount: u64,
@@ -223,6 +210,25 @@ module appointment_booking::appointment_booking {
         let withdrawal_amount = coin::take(&mut clinic.wallet, amount, ctx);
         transfer::public_transfer(withdrawal_amount, clinic.clinic_address);
     }
+
+    // New function to update appointment status
+    public fun update_appointment_status(
+        clinic: &mut Clinic,
+        created_at: u64,
+        new_status: String
+    ) {
+        assert!(table::contains(&clinic.appointments, created_at), InvalidAppointment);
+        let appointment = table::borrow_mut<u64, Appointment>(&mut clinic.appointments, created_at);
+        appointment.status = new_status;
+    }
     
-  
+    // New function to cancel an appointment
+    public fun cancel_appointment(
+        clinic: &mut Clinic,
+        created_at: u64
+    ) {
+        assert!(table::contains(&clinic.appointments, created_at), InvalidAppointment);
+        let appointment = table::borrow_mut<u64, Appointment>(&mut clinic.appointments, created_at);
+        appointment.status = string::utf8(b"Cancelled");
+    }
 }
