@@ -165,7 +165,7 @@ module appointment_booking::appointment_booking {
         &patient.wallet
     }
 
-    // Function to enable the Patient to add coin to the wallet
+    // Function to enable the Patient to top up coin to the wallet
     public fun add_coin_to_patient_wallet(
         patient: &mut Patient,
         coin: Coin<SUI>,
@@ -223,6 +223,51 @@ module appointment_booking::appointment_booking {
         let withdrawal_amount = coin::take(&mut clinic.wallet, amount, ctx);
         transfer::public_transfer(withdrawal_amount, clinic.clinic_address);
     }
+
+
+ 
+
+    // Remove the appointment from the clinic's records
+    public fun cancel_appointment(
+        clinic: &mut Clinic,
+        created_at: u64,
+    ) {
+        let appointment = table::remove(&mut clinic.appointments, created_at);
+        let Appointment {
+            id,
+            patient: _,
+            clinic: _,
+            description: _,
+            booking_date: _,
+            booking_time: _,
+            created_at: _,
+            status: _,
+        } = appointment;
+        object::delete(id);
+    }
+
+
+    // Update  appointment details 
+    public fun update_appointment(
+        clinic: &mut Clinic,
+        created_at: u64,
+        description: vector<u8>,
+        booking_date: vector<u8>,
+        booking_time: vector<u8>,
+    ) {
+        let appointment = table::borrow_mut(&mut clinic.appointments, created_at);
+        appointment.description = description;
+        appointment.booking_date = booking_date;
+        appointment.booking_time = booking_time;
+    }
     
-  
+
+    // Patient confirms the appointment made by clinic
+    public fun confirm_appointment(
+        clinic: &mut Clinic,
+        created_at: u64,
+    ) {
+        let appointment = table::borrow_mut(&mut clinic.appointments, created_at);
+        appointment.status = string::utf8(b"Confirmed");
+    }
 }
